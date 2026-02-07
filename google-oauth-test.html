@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google OAuth Test - Auth Service</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .google-btn-container {
+            margin: 30px 0;
+            text-align: center;
+        }
+        .response-container {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            display: none;
+        }
+        .response-container.show {
+            display: block;
+        }
+        .response-container h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .token-display {
+            background: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            margin: 10px 0;
+            word-wrap: break-word;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .user-info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #ffe7e7;
+            color: #d32f2f;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #e7ffe7;
+            color: #2f7d32;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .config-section {
+            background: #fff9e6;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #ff9800;
+        }
+        .config-section h3 {
+            margin-top: 0;
+            color: #ff9800;
+        }
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .button {
+            background: #4285f4;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #357ae8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Google OAuth Test Page</h1>
+        <p class="subtitle">Test your Google OAuth integration with the Auth Service backend</p>
+
+        <div class="config-section">
+            <h3>⚙️ Configuration Required</h3>
+            <p>Before testing, make sure you have:</p>
+            <ol>
+                <li>Set your Google Client ID in the script below (line with <code>YOUR_GOOGLE_CLIENT_ID</code>)</li>
+                <li>Auth service running on <code>http://localhost:8081</code></li>
+                <li>Database migrations completed</li>
+                <li>Environment variables set for Google OAuth credentials</li>
+            </ol>
+        </div>
+
+        <div class="google-btn-container">
+            <h2>Sign in with Google</h2>
+            <div id="g_id_onload"
+                 data-client_id="YOUR_GOOGLE_CLIENT_ID"
+                 data-callback="handleCredentialResponse"
+                 data-auto_prompt="false">
+            </div>
+            <div class="g_id_signin" 
+                 data-type="standard"
+                 data-size="large"
+                 data-theme="outline"
+                 data-text="sign_in_with"
+                 data-shape="rectangular"
+                 data-logo_alignment="left">
+            </div>
+        </div>
+
+        <div class="response-container" id="responseContainer">
+            <h3>Response from Backend</h3>
+            <div id="responseContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const BACKEND_URL = 'http://localhost:8081';
+        const ROLE_ID = 2; // Change this based on your role structure
+
+        function parseJwt(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                console.error('Error parsing JWT:', e);
+                return null;
+            }
+        }
+
+        async function handleCredentialResponse(response) {
+            console.log('Google credential received');
+            const responseContainer = document.getElementById('responseContainer');
+            const responseContent = document.getElementById('responseContent');
+            
+            try {
+                // Decode Google's JWT token
+                const googleToken = response.credential;
+                const payload = parseJwt(googleToken);
+                
+                console.log('Google user info:', payload);
+                
+                // Show loading
+                responseContent.innerHTML = '<div class="user-info">Processing login...</div>';
+                responseContainer.classList.add('show');
+
+                // Prepare request to backend
+                const requestBody = {
+                    email: payload.email,
+                    firstName: payload.given_name,
+                    lastName: payload.family_name,
+                    oauthProviderId: payload.sub,
+                    roleId: ROLE_ID
+                };
+
+                console.log('Sending to backend:', requestBody);
+
+                // Call backend API
+                const backendResponse = await fetch(`${BACKEND_URL}/api/v1/auth/oauth2/google/login?source=web`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const data = await backendResponse.json();
+                console.log('Backend response:', data);
+
+                if (data.accessToken) {
+                    // Success
+                    localStorage.setItem('accessToken', data.accessToken);
+                    localStorage.setItem('refreshToken', data.refreshToken);
+                    localStorage.setItem('userId', data.userId);
+
+                    responseContent.innerHTML = `
+                        <div class="success">
+                            <strong>✅ ${data.message || 'Login Successful!'}</strong>
+                        </div>
+                        
+                        <div class="user-info">
+                            <h4>User Information:</h4>
+                            <p><strong>User ID:</strong> ${data.userId}</p>
+                            <p><strong>Email:</strong> ${data.email}</p>
+                            <p><strong>Name:</strong> ${data.firstName} ${data.lastName || ''}</p>
+                        </div>
+
+                        <div class="token-display">
+                            <h4>Access Token:</h4>
+                            <p>${data.accessToken}</p>
+                        </div>
+
+                        <div class="token-display">
+                            <h4>Refresh Token:</h4>
+                            <p>${data.refreshToken}</p>
+                        </div>
+
+                        <button class="button" onclick="testAuthenticatedRequest()">
+                            Test Authenticated Request
+                        </button>
+                        <button class="button" onclick="clearTokens()">
+                            Clear Tokens
+                        </button>
+                    `;
+                } else {
+                    // Error from backend
+                    responseContent.innerHTML = `
+                        <div class="error">
+                            <strong>❌ Login Failed</strong>
+                            <p>${data.message || 'Unknown error occurred'}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error during login:', error);
+                responseContent.innerHTML = `
+                    <div class="error">
+                        <strong>❌ Error</strong>
+                        <p>${error.message}</p>
+                        <p>Make sure the backend is running on ${BACKEND_URL}</p>
+                    </div>
+                `;
+            }
+
+            responseContainer.classList.add('show');
+        }
+
+        async function testAuthenticatedRequest() {
+            const accessToken = localStorage.getItem('accessToken');
+            if (!accessToken) {
+                alert('No access token found. Please login first.');
+                return;
+            }
+
+            try {
+                // Example: Call a protected endpoint
+                const response = await fetch(`${BACKEND_URL}/api/v1/user/profile`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    alert('Authenticated request successful!\n\n' + JSON.stringify(data, null, 2));
+                } else {
+                    alert('Authenticated request failed with status: ' + response.status);
+                }
+            } catch (error) {
+                alert('Error testing authenticated request: ' + error.message);
+            }
+        }
+
+        function clearTokens() {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('userId');
+            document.getElementById('responseContainer').classList.remove('show');
+            alert('Tokens cleared! You can login again.');
+        }
+
+        // Check if already logged in
+        window.onload = function() {
+            const accessToken = localStorage.getItem('accessToken');
+            if (accessToken) {
+                const responseContainer = document.getElementById('responseContainer');
+                const responseContent = document.getElementById('responseContent');
+                
+                responseContent.innerHTML = `
+                    <div class="success">
+                        <strong>✅ You are already logged in!</strong>
+                    </div>
+                    <div class="token-display">
+                        <h4>Stored Access Token:</h4>
+                        <p>${accessToken}</p>
+                    </div>
+                    <button class="button" onclick="testAuthenticatedRequest()">
+                        Test Authenticated Request
+                    </button>
+                    <button class="button" onclick="clearTokens()">
+                        Logout & Clear Tokens
+                    </button>
+                `;
+                responseContainer.classList.add('show');
+            }
+        };
+    </script>
+</body>
+</html>

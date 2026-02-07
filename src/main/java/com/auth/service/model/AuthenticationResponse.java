@@ -11,16 +11,18 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class AuthenticationResponse {
 
-
     private String message;
     private String accessToken;
     private String refreshToken;
-    //private TokenType tokenType;
+    // private TokenType tokenType;
     private String tokenType;
+    private Integer userId;
+    private String email;
+    private String firstName;
+    private String lastName;
 
-    public AuthenticationResponse(String message){
+    public AuthenticationResponse(String message) {
         this.message = message;
     }
-
 
 }

@@ -30,10 +30,23 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
 @EnableMethodSecurity
 public class SecurityConfiguration {
 
-    private static final String[] REST_PATH_URL = { "/api/v1/auth/register", "/api/v1/auth/authenticate",
-            "/api/v1/user/generate-otp", "/api/v1/user/validate-otp", "/api/v1/user/resend-otp",
-            "/api/v1/assist/create", "/api/v1/assist/get-all",
-            "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html" };
+    // Public endpoints that don't require authentication
+    private static final String[] REST_PATH_URL = {
+            // Auth endpoints
+            "/api/v1/auth/register",
+            "/api/v1/auth/authenticate",
+            "/api/v1/auth/refresh-token",
+            "/api/v1/auth/oauth2/**",
+            // OTP endpoints
+            "/api/v1/auth/send-otp",
+            "/api/v1/auth/verify-otp",
+            "/api/v1/auth/login-with-otp",
+            // Password management
+            "/api/v1/auth/forgot-password",
+            "/api/v1/auth/reset-password",
+            // Swagger
+            "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html"
+    };
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
     private final LogoutHandler logoutHandler;

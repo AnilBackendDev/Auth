@@ -30,7 +30,7 @@ public class User implements UserDetails {
 
     private String firstName;
     private String lastName;
-    @Column(name= "email_id")
+    @Column(name = "email_id")
     private String email;
     private String password;
     private String mobileNumber;
@@ -65,6 +65,12 @@ public class User implements UserDetails {
     private Integer isUpdated = 0;
     private String alternativeMobileNumber;
 
+    // OAuth2 fields
+    @Column(name = "oauth_provider")
+    private String oauthProvider; // e.g., "GOOGLE", "LOCAL"
+
+    @Column(name = "oauth_provider_id")
+    private String oauthProviderId; // The unique ID from the OAuth provider
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -107,7 +113,6 @@ public class User implements UserDetails {
     public boolean isEnabled() {
         return UserDetails.super.isEnabled();
     }
-
 
     @PrePersist
     protected void onCreate() {

@@ -16,31 +16,32 @@ import lombok.NoArgsConstructor;
 @Valid
 public class RegisterRequestDto {
 
-    private Integer id;
-    @NotBlank(message = "first name should not be empty or null")
+    // Basic required fields
+    @NotBlank(message = "First name is required")
     private String firstName;
-//    @NotBlank(message = "last name should not be empty or null")
+
     private String lastName;
-//    @NotBlank(message = "email should not be empty or null")
-    @Email(message = "email should be valid")
+
+    @Email(message = "Email should be valid")
     private String email;
-    @NotBlank(message = "mobile number should not be empty or null")
+
+    @NotBlank(message = "Mobile number is required")
     private String mobileNumber;
-    @NotNull(message = "role id should not be empty or null")
-    @Positive(message = "role id must be a positive number")
+
+    @NotNull(message = "Role ID is required")
+    @Positive(message = "Role ID must be a positive number")
     private Integer roleId;
-//    @NotBlank(message = "password should not be empty or null")
+
     private String password;
+
+    // Status fields
     private UserVerified isUserVerified;
-    private Integer status;
-    private String dob;
-    private String source;
-    private String state;
-    private String city;
+    private String source; // web, mobile, etc.
+
+    // Optional business fields (can be added later by admin)
     private String companyName;
     private String gst;
     private String address;
-    private String reason;
-
-
+    private String city;
+    private String state;
 }

@@ -1,475 +1,793 @@
-# 🚀 Authentication Service - Local Testing Guide
+# Local Testing Guide
 
-## Overview
-This guide will help you set up and test the Authentication Service locally with database migrations and Swagger UI.
+Complete guide for testing the Authentication Service locally with step-by-step instructions, example requests, and expected responses.
+
+---
+
+## 📋 Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Initial Setup](#initial-setup)
+- [Test Scenarios](#test-scenarios)
+  - [1. User Registration](#1-user-registration)
+  - [2. Login with Password](#2-login-with-password)
+  - [3. Login with OTP](#3-login-with-otp)
+  - [4. Google OAuth Login](#4-google-oauth-login)
+  - [5. Password Management](#5-password-management)
+  - [6. Token Refresh](#6-token-refresh)
+  - [7. Role Management](#7-role-management)
+- [Testing Tools](#testing-tools)
+- [Common Issues](#common-issues)
 
 ---
 
 ## ✅ Prerequisites
 
-- ☑️ Java 17 or higher
-- ☑️ Maven 3.6+
-- ☑️ MySQL 8.0+ (running locally)
-- ☑️ Git
-- ☑️ Terminal/Command Prompt
+Before testing, ensure you have:
+
+1. **Java 17+** installed
+2. **MySQL 8.0+** running
+3. **Database created:**
+   ```bash
+   mysql -u root -p
+   CREATE DATABASE auth_user;
+   ```
+4. **Application** configured in `application.properties`
+5. **Application running:** `./mvnw spring-boot:run`
 
 ---
 
-## 📋 Step-by-Step Setup
+## 🚀 Initial Setup
 
-### Step 1: Create Local MySQL Database
-
-```bash
-# Connect to MySQL
-mysql -u root -p
-
-# Create database
-CREATE DATABASE auth_auth_local CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
-# Verify database created
-SHOW DATABASES;
-
-# Exit MySQL
-EXIT;
-```
-
-### Step 2: Update Application Configuration
-
-Navigate to the auth service directory:
-```bash
-cd /Users/credr/Documents/Og/auth-auth-service
-```
-
-**Option A: Use Local Configuration File**
-```bash
-# Copy the local configuration template
-cp /Users/credr/Documents/Og/auth-b2b-backend/application-local.properties \
-   src/main/resources/application.properties
-```
-
-**Option B: Manual Update**
-
-Edit `src/main/resources/application.properties` and update the database section:
-
-```properties
-# Update these values
-spring.datasource.url=jdbc:mysql://localhost:3306/auth_auth_local?useSSL=false&serverTimezone=UTC
-spring.datasource.username=root
-spring.datasource.password=YOUR_MYSQL_PASSWORD
-
-# Ensure Flyway is enabled
-spring.flyway.enabled=true
-spring.flyway.baseline-on-migrate=true
-```
-
-### Step 3: Build the Project
+### Step 1: Start the Application
 
 ```bash
-cd /Users/credr/Documents/Og/auth-auth-service
-
-# Clean and build
-./mvnw clean install -DskipTests
-```
-
-**Expected Output:**
-```
-[INFO] BUILD SUCCESS
-[INFO] Total time:  XX.XXX s
-```
-
-### Step 4: Run Database Migrations
-
-Migrations will run automatically when you start the application. To verify manually:
-
-```bash
-# Run Flyway migration
-./mvnw flyway:migrate
-```
-
-**What gets created:**
-- ✅ `user` table
-- ✅ `role` table  
-- ✅ `permissions` table
-- ✅ `role_permission` junction table
-- ✅ `token` table
-- ✅ `otp` table
-
-**What gets inserted:**
-- ✅ 5 default roles
-- ✅ 21 permissions with role assignments
-- ✅ 1 admin user (admin@auth.com / Admin@123)
-
-### Step 5: Start the Application
-
-```bash
+cd /path/to/auth-service
 ./mvnw spring-boot:run
 ```
 
-**Expected Output:**
-```
-====================================================
-   Auth Authentication Service Started
-   Port: 8081
-   Ready to handle authentication requests!
-====================================================
-```
+**Verify startup:**
+- Check console for: `Started AuthServiceApplication`
+- Application runs on: **http://localhost:8081**
 
-### Step 6: Verify the Service is Running
+### Step 2: Verify Database
 
-**Health Check:**
+Tables should be auto-created by Flyway:
 ```bash
-curl http://localhost:8081/actuator/health
-```
-
-**Expected Response:**
-```json
-{"status":"UP"}
-```
-
----
-
-## 📖 Access Swagger UI
-
-### Open Swagger Documentation
-
-**Browser:** http://localhost:8081/swagger-ui.html
-
-**API Docs (JSON):** http://localhost:8081/v3/api-docs
-
-### Swagger UI Features
-
-- 📝 Complete API documentation
-- 🧪 Try out endpoints directly
-- 🔐 JWT token authentication support
-- 📋 Request/response examples
-
----
-
-## 🧪 Testing the API
-
-### Test 1: Login with Default Admin
-
-**Using Swagger UI:**
-
-1. Open http://localhost:8081/swagger-ui.html
-2. Find `POST /api/auth/login`
-3. Click "Try it out"
-4. Enter request body:
-```json
-{
-  "email": "admin@auth.com",
-  "password": "Admin@123"
-}
-```
-5. Click "Execute"
-
-**Using cURL:**
-
-```bash
-curl -X POST "http://localhost:8081/api/auth/login" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@auth.com",
-    "password": "Admin@123"
-  }'
-```
-
-**Expected Response:**
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refreshToken": "...",
-  "user": {
-    "id": 1,
-    "email": "admin@auth.com",
-    "firstName": "Admin",
-    "role": "ADMIN"
-  }
-}
-```
-
-**Copy the `token` value for the next tests!**
-
-### Test 2: Get All Roles (Authenticated)
-
-**Using Swagger UI:**
-
-1. Click the "Authorize" button (🔒) at the top of Swagger UI
-2. Enter: `Bearer YOUR_TOKEN_HERE`
-3. Click "Authorize"
-4. Find `GET /api/roles`
-5. Click "Try it out" → "Execute"
-
-**Using cURL:**
-
-```bash
-curl -X GET "http://localhost:8081/api/roles" \
-  -H "Authorization: Bearer YOUR_TOKEN_HERE"
-```
-
-**Expected Response:**
-```json
-[
-  {"id": 1, "roleName": "ADMIN"},
-  {"id": 2, "roleName": "DISTRIBUTOR"},
-  {"id": 3, "roleName": "RETAILER"},
-  {"id": 4, "roleName": "STOCKIST"},
-  {"id": 5, "roleName": "MARKETING_USER"}
-]
-```
-
-### Test 3: Register New User
-
-**Using cURL:**
-
-```bash
-curl -X POST "http://localhost:8081/api/auth/register" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "firstName": "Test",
-    "lastName": "User",
-    "email": "test@example.com",
-    "password": "Test@123",
-    "mobileNumber": "1234567890",
-    "roleId": 2,
-    "companyName": "Test Company"
-  }'
-```
-
-### Test 4: Change Password
-
-```bash
-curl -X POST "http://localhost:8081/api/auth/change-password" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "oldPassword": "Admin@123",
-    "newPassword": "NewAdmin@123"
-  }'
-```
-
----
-
-## 🗄️ Verify Database
-
-### Check Tables Created
-
-```sql
-mysql -u root -p auth_auth_local
-
+mysql -u root -p auth_user
 SHOW TABLES;
 ```
 
-**Expected Output:**
-```
-+---------------------------+
-| Tables_in_auth_auth_local |
-+---------------------------+
-| flyway_schema_history     |
-| otp                       |
-| permissions               |
-| role                      |
-| role_permission           |
-| token                     |
-| user                      |
-+---------------------------+
-```
+**Expected tables:**
+- user
+- role
+- permissions
+- role_permission
+- token
+- otp
 
-### Check Roles Inserted
+### Step 3: Access Swagger UI
 
-```sql
-SELECT * FROM role;
-```
+Open browser: **http://localhost:8081/swagger-ui.html**
 
-### Check Permissions
+You should see all API endpoints documented.
 
-```sql
-SELECT * FROM permissions;
-```
+### Step 4: Verify Default Admin
 
-### Check Admin User
-
-```sql
-SELECT id, first_name, email_id, role_id FROM user;
-```
-
-### Check Flyway Migration History
-
-```sql
-SELECT * FROM flyway_schema_history;
-```
-
----
-
-## 📊 Available API Endpoints
-
-### Authentication Endpoints
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/auth/register` | Register new user | ❌ No |
-| POST | `/api/auth/login` | User login | ❌ No |
-| POST | `/api/auth/logout` | User logout | ✅ Yes |
-| POST | `/api/auth/refresh-token` | Refresh JWT | ✅ Yes |
-| POST | `/api/auth/verify-otp` | Verify OTP | ❌ No |
-| POST | `/api/auth/resend-otp` | Resend OTP | ❌ No |
-
-### Password Management
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/auth/forgot-password` | Initiate password reset | ❌ No |
-| POST | `/api/auth/reset-password` | Reset password with OTP | ❌ No |
-| POST | `/api/auth/change-password` | Change password | ✅ Yes |
-
-### Role Management (Admin Only)
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/roles` | List all roles | ✅ Yes |
-| POST | `/api/roles` | Create new role | ✅ Yes (Admin) |
-| GET | `/api/roles/{id}` | Get role details | ✅ Yes |
-| PUT | `/api/roles/{id}` | Update role | ✅ Yes (Admin) |
-| DELETE | `/api/roles/{id}` | Delete role | ✅ Yes (Admin) |
-
-### Monitoring & Health
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/actuator/health` | Health check |
-| GET | `/actuator/info` | Application info |
-| GET | `/actuator/metrics` | Application metrics |
-| GET | `/actuator/flyway` | Database migration history |
-
----
-
-## 🐛 Troubleshooting
-
-### Issue 1: Database Connection Failed
-
-**Error:**
-```
-Communications link failure
-```
-
-**Solution:**
-1. Verify MySQL is running: `brew services list` or `systemctl status mysql`
-2. Check credentials in `application.properties`
-3. Ensure database exists: `SHOW DATABASES;`
-4. Check MySQL is on port 3306: `netstat -an | grep 3306`
-
-### Issue 2: Flyway Migration Failed
-
-**Error:**
-```
-FlywayException: Migration failed
-```
-
-**Solution:**
-1. Check migration files syntax
-2. Verify database schema exists
-3. Drop and recreate database:
-```sql
-DROP DATABASE auth_auth_local;
-CREATE DATABASE auth_auth_local CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-4. Restart application
-
-### Issue 3: Port 8081 Already in Use
-
-**Error:**
-```
-Port 8081 was already in use
-```
-
-**Solution:**
-1. Find and kill process:
-```bash
-lsof -i :8081
-kill -9 <PID>
-```
-2. Or change port in `application.properties`:
-```properties
-server.port=8082
-```
-
-### Issue 4: Swagger UI Not Loading
-
-**Solution:**
-1. Verify Swagger dependency in pom.xml
-2. Check application is running
-3. Clear browser cache
-4. Try: http://localhost:8081/swagger-ui/index.html
-
-### Issue 5: JWT Token Invalid
-
-**Solution:**
-1.Check token expiration (default: 30 days)
-2. Ensure `jwt.secret-key` matches across services
-3. Verify token format: `Bearer <token>`
-
----
-
-## ✨ Default Credentials
-
-### Admin User
-- **Email:** admin@auth.com
+Default admin user is created automatically:
+- **Email:** admin@auth-service.com
 - **Password:** Admin@123
+- **Mobile:** 9999999999
 - **Role:** ADMIN
 
-⚠️ **IMPORTANT:** Change this password in production!
+---
+
+## 🧪 Test Scenarios
+
+### 1. User Registration
+
+#### Test Case 1.1: Register New User (Success)
+
+**Request:**
+```bash
+curl -X POST http://localhost:8081/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john.doe@example.com",
+    "mobileNumber": "9876543210",
+    "roleId": 2,
+    "password": "John@123",
+    "source": "web"
+  }'
+```
+
+**Expected Response (201 Created):**
+```json
+{
+  "message": "User registered successfully"
+}
+```
+
+**Verify in Database:**
+```sql
+SELECT * FROM user WHERE email_id = 'john.doe@example.com';
+```
+
+#### Test Case 1.2: Register Duplicate Email (Failure)
+
+**Request:**
+```bash
+curl -X POST http://localhost:8081/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Jane",
+    "lastName": "Smith",
+    "email": "john.doe@example.com",
+    "mobileNumber": "9876543211",
+    "roleId": 2,
+    "password": "Jane@123"
+  }'
+```
+
+**Expected Response (400 Bad Request):**
+```json
+{
+  "message": "User with email john.doe@example.com already exists."
+}
+```
+
+#### Test Case 1.3: Invalid Mobile Number (Failure)
+
+**Request:**
+```bash
+curl -X POST http://localhost:8081/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Test",
+    "email": "test@example.com",
+    "mobileNumber": "12345",
+    "roleId": 2,
+    "password": "Test@123"
+  }'
+```
+
+**Expected Response (400 Bad Request):**
+```json
+{
+  "message": "Mobile number must be 10 digits."
+}
+```
 
 ---
 
-## 📝 Database Schema Details
+### 2. Login with Password
 
-### User Table
-```sql
-- id: INT (Primary Key)
-- email_id: VARCHAR(255) (Unique)
-- password: VARCHAR(255) (BCrypt hashed)
-- first_name: VARCHAR(100)
-- last_name: VARCHAR(100)
-- mobile_number: VARCHAR(20)
-- role_id: INT (Foreign Key)
-- is_user_verified: ENUM
-- company_name: VARCHAR(255)
-- gst: VARCHAR(50)
-- city, state, address: TEXT
-- status: INT
-- created_at, updated_at: TIMESTAMP
+#### Test Case 2.1: Login with Email (Success)
+
+**Request:**
+```bash
+curl -X POST http://localhost:8081/api/v1/auth/authenticate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "john.doe@example.com",
+    "password": "John@123",
+    "source": "web"
+  }'
 ```
 
-### Role & Permissions
-- Many-to-Many relationship via `role_permission` table
-- Each role can have multiple permissions
-- Permissions are defined in the permissions table
+**Expected Response (200 OK):**
+```json
+{
+  "message": "Login successful",
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "tokenType": "BEARER",
+  "userId": 2,
+  "email": "john.doe@example.com",
+  "firstName": "John",
+  "lastName": "Doe"
+}
+```
+
+**Save the accessToken** for subsequent authenticated requests.
+
+#### Test Case 2.2: Login with Mobile Number (Success)
+
+**Request:**
+```bash
+curl -X POST http://localhost:8081/api/v1/auth/authenticate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "9876543210",
+    "password": "John@123",
+    "source": "mobile"
+  }'
+```
+
+**Expected Response:** Same as Test Case 2.1
+
+#### Test Case 2.3: Login with Wrong Password (Failure)
+
+**Request:**
+```bash
+curl -X POST http://localhost:8081/api/v1/auth/authenticate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "john.doe@example.com",
+    "password": "WrongPassword",
+    "source": "web"
+  }'
+```
+
+**Expected Response (401 Unauthorized):**
+```json
+{
+  "message": "Invalid credentials"
+}
+```
+
+---
+
+### 3. Login with OTP
+
+#### Test Case 3.1: Send OTP (Success)
+
+**Request:**
+```bash
+curl -X POST http://localhost:8081/api/v1/auth/send-otp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mobileNumber": "9876543210"
+  }'
+```
+
+**Expected Response (200 OK):**
+```json
+{
+  "message": "OTP sent successfully to ****3210"
+}
+```
+
+**Check Console Logs:**
+Look for: `OTP generated for 9876543210: 123456`
+
+**Verify in Database:**
+```sql
+SELECT * FROM otp WHERE mobile_number = '9876543210' ORDER BY created_at DESC LIMIT 1;
+```
+
+#### Test Case 3.2: Verify OTP (Success)
+
+**Request:**
+```bash
+curl -X POST http://localhost:8081/api/v1/auth/verify-otp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mobileNumber": "9876543210",
+    "otp": "123456"
+  }'
+```
+
+**Expected Response (200 OK):**
+```json
+{
+  "message": "OTP verified successfully"
+}
+```
+
+#### Test Case 3.3: Login with OTP (Success)
+
+**Request:**
+```bash
+curl -X POST http://localhost:8081/api/v1/auth/login-with-otp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mobileNumber": "9876543210",
+    "otp": "123456"
+  }'
+```
+
+**Expected Response (200 OK):**
+```json
+{
+  "message": "Login successful",
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "tokenType": "BEARER",
+  "userId": 2,
+  "email": "john.doe@example.com",
+  "firstName": "John",
+  "lastName": "Doe"
+}
+```
+
+#### Test Case 3.4: Expired OTP (Failure)
+
+Wait for 5 minutes, then:
+
+**Request:**
+```bash
+curl -X POST http://localhost:8081/api/v1/auth/login-with-otp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mobileNumber": "9876543210",
+    "otp": "123456"
+  }'
+```
+
+**Expected Response (401 Unauthorized):**
+```json
+{
+  "message": "OTP has expired. Please request a new one."
+}
+```
+
+---
+
+### 4. Google OAuth Login
+
+#### Test Case 4.1: Test OAuth with HTML File
+
+1. **Update google-oauth-test.html:**
+   - Open file
+   - Replace `YOUR_GOOGLE_CLIENT_ID` with your actual Google Client ID (line ~75)
+
+2. **Open in Browser:**
+   ```bash
+   open google-oauth-test.html
+   ```
+
+3. **Click "Sign in with Google"**
+
+4. **Select Google Account**
+
+5. **View Response:**
+   - Access Token displayed
+   - Refresh Token displayed
+   - User info displayed
+
+#### Test Case 4.2: OAuth Login via API (Success)
+
+**Request:**
+```bash
+curl -X POST 'http://localhost:8081/api/v1/auth/oauth2/google/login?source=web' \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "testuser@gmail.com",
+    "firstName": "Test",
+    "lastName": "User",
+    "oauthProviderId": "google-123456789",
+    "roleId": 2
+  }'
+```
+
+**Expected Response (200 OK):**
+```json
+{
+  "message": "Login successful",
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "tokenType": "BEARER",
+  "userId": 3,
+  "email": "testuser@gmail.com",
+  "firstName": "Test",
+  "lastName": "User"
+}
+```
+
+**Verify in Database:**
+```sql
+SELECT * FROM user WHERE oauth_provider = 'GOOGLE' AND oauth_provider_id = 'google-123456789';
+```
+
+---
+
+### 5. Password Management
+
+#### Test Case 5.1: Forgot Password - Send OTP (Success)
+
+**Request:**
+```bash
+curl -X POST http://localhost:8081/api/v1/auth/forgot-password \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mobileNumber": "9876543210"
+  }'
+```
+
+**Expected Response (200 OK):**
+```json
+{
+  "message": "OTP sent to your registered mobile number"
+}
+```
+
+**Check Console for OTP**
+
+#### Test Case 5.2: Reset Password with OTP (Success)
+
+**Request:**
+```bash
+curl -X POST http://localhost:8081/api/v1/auth/reset-password \
+  -H "Content-Type: application/json" \
+  -d '{
+    "identifier": "9876543210",
+    "otp": "123456",
+    "newPassword": "NewPassword@123"
+  }'
+```
+
+**Expected Response (200 OK):**
+```json
+{
+  "message": "Password reset successfully. Please login with your new password."
+}
+```
+
+**Verify:** Login with new password
+
+#### Test Case 5.3: Update Password (Authenticated) (Success)
+
+First, login to get access token, then:
+
+**Request:**
+```bash
+curl -X POST http://localhost:8081/api/v1/auth/update-password \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -d '{
+    "currentPassword": "NewPassword@123",
+    "newPassword": "AnotherPassword@123"
+  }'
+```
+
+**Expected Response (200 OK):**
+```json
+{
+  "message": "Password updated successfully. Please login again."
+}
+```
+
+---
+
+### 6. Token Refresh
+
+#### Test Case 6.1: Refresh Access Token (Success)
+
+**Request:**
+```bash
+curl -X POST http://localhost:8081/api/v1/auth/refresh-token \
+  -H "Authorization: Bearer YOUR_REFRESH_TOKEN"
+```
+
+**Expected Response (200 OK):**
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "tokenType": "Bearer",
+  "message": "success",
+  "userId": 2,
+  "email": "john.doe@example.com",
+  "firstName": "John",
+  "lastName": "Doe"
+}
+```
+
+---
+
+### 7. Role Management
+
+#### Test Case 7.1: Get All Roles (Success)
+
+**Request:**
+```bash
+curl -X GET 'http://localhost:8081/api/roles?page=0&count=10' \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Expected Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "roleName": "ADMIN",
+    "status": 1
+  },
+  {
+    "id": 2,
+    "roleName": "USER",
+    "status": 1
+  },
+  {
+    "id": 3,
+    "roleName": "DISTRIBUTOR",
+    "status": 1
+  }
+]
+```
+
+#### Test Case 7.2: Create New Role (Admin Only)
+
+**Request:**
+```bash
+curl -X POST http://localhost:8081/api/roles \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ADMIN_ACCESS_TOKEN" \
+  -d '{
+    "roleName": "MANAGER",
+    "status": 1
+  }'
+```
+
+**Expected Response (200 OK):**
+```json
+{
+  "id": 7,
+  "roleName": "MANAGER",
+  "status": 1
+}
+```
+
+---
+
+## 🔧 Testing Tools
+
+### 1. Swagger UI (Recommended)
+
+**URL:** http://localhost:8081/swagger-ui.html
+
+**Steps:**
+1. Open Swagger UI
+2. Find endpoint (e.g., /api/v1/auth/register)
+3. Click "Try it out"
+4. Fill in request body
+5. Click "Execute"
+6. View response
+
+**Advantages:**
+- Visual interface
+- Request/response schemas
+- Easy authentication (Authorize button)
+- No command-line needed
+
+### 2. Postman
+
+**Import Collection:**
+Create a new collection with these endpoints and save.
+
+**Environment Variables:**
+- `baseUrl`: http://localhost:8081
+- `accessToken`: (set after login)
+- `refreshToken`: (set after login)
+
+**Authentication:**
+- Go to Authorization tab
+- Type: Bearer Token
+- Token: {{accessToken}}
+
+### 3. cURL (Command Line)
+
+All examples in this guide use cURL.
+
+**Save token to variable:**
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8081/api/v1/auth/authenticate \
+  -H "Content-Type: application/json" \
+  -d '{"username":"john.doe@example.com","password":"John@123","source":"web"}' \
+  | jq -r '.accessToken')
+
+echo $TOKEN
+```
+
+**Use token:**
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8081/api/roles?page=0&count=10
+```
+
+### 4. Browser DevTools
+
+For OAuth testing:
+1. Open `google-oauth-test.html`
+2. Open DevTools (F12)
+3. Go to Console tab
+4. Click "Sign in with Google"
+5. View requests in Network tab
+6. Check console for responses
+
+---
+
+## ❗ Common Issues
+
+### Issue 1: Port Already in Use
+
+**Error:**
+```
+Web server failed to start. Port 8081 was already in use.
+```
+
+**Solution:**
+```bash
+# Find process
+lsof -ti:8081
+
+# Kill process
+kill -9 $(lsof -ti:8081)
+
+# Restart application
+./mvnw spring-boot:run
+```
+
+### Issue 2: Database Connection Failed
+
+**Error:**
+```
+Cannot create PoolableConnectionFactory
+```
+
+**Solution:**
+1. Verify MySQL is running: `mysql -u root -p`
+2. Check database exists: `SHOW DATABASES;`
+3. Verify credentials in `application.properties`
+4. Check MySQL port: default 3306
+
+### Issue 3: Flyway Migration Failed
+
+**Error:**
+```
+FlywayException: Validate failed
+```
+
+**Solution:**
+```sql
+-- Reset Flyway history
+DELETE FROM flyway_schema_history WHERE version > 2;
+
+-- Or drop and recreate database
+DROP DATABASE auth_user;
+CREATE DATABASE auth_user;
+```
+
+Restart application to re-run migrations.
+
+### Issue 4: OTP Not Found
+
+**Error:**
+```
+No OTP found for this mobile number
+```
+
+**Solution:**
+1. Send OTP first: `POST /api/v1/auth/send-otp`
+2. Check console logs for OTP value
+3. Use OTP within 5 minutes
+4. Check database: `SELECT * FROM otp WHERE mobile_number = '9876543210';`
+
+### Issue 5: Invalid Token
+
+**Error:**
+```
+JWT token is expired or invalid
+```
+
+**Solution:**
+1. Check token expiration (default: 24 hours)
+2. Use refresh token endpoint
+3. Re-login to get new tokens
+4. Verify token is passed in Authorization header: `Bearer <token>`
+
+### Issue 6: OAuth Redirect Mismatch
+
+**Error:**
+```
+redirect_uri_mismatch
+```
+
+**Solution:**
+1. Go to Google Cloud Console
+2. Check "Authorized redirect URIs"
+3. Add: `http://localhost:3000/auth/callback`
+4. Add: `http://localhost:8081/login/oauth2/code/google`
+5. Save and wait 5 minutes for changes to propagate
+
+### Issue 7: CORS Error
+
+**Error:**
+```
+Access to fetch has been blocked by CORS policy
+```
+
+**Solution:**
+Update `SecurityConfiguration.java`:
+```java
+configuration.setAllowedOrigins(List.of(
+    "http://localhost:3000",
+    "http://localhost:8081",
+    "http://your-frontend-url"
+));
+```
+
+---
+
+## ✅ Testing Checklist
+
+Use this checklist to verify all features:
+
+- [ ] Application starts successfully
+- [ ] Database tables created
+- [ ] Swagger UI accessible
+- [ ] Register new user
+- [ ] Login with email + password
+- [ ] Login with mobile + password
+- [ ] Send OTP
+- [ ] Verify OTP
+- [ ] Login with OTP
+- [ ] Google OAuth login (if configured)
+- [ ] Forgot password
+- [ ] Reset password with OTP
+- [ ] Update password (authenticated)
+- [ ] Refresh token
+- [ ] Get all roles
+- [ ] Create new role (admin)
+- [ ] Health check endpoint
+- [ ] Token expiration
+- [ ] Invalid credentials error
+- [ ] Duplicate user error
+
+---
+
+## 📊 Expected Database State
+
+After running all tests, verify:
+
+```sql
+-- Should have multiple users
+SELECT COUNT(*) FROM user;  -- At least 3 (admin + your test users)
+
+-- Should have 6 default roles
+SELECT COUNT(*) FROM role;  -- 6
+
+-- Should have permissions
+SELECT COUNT(*) FROM permissions;  -- ~20
+
+-- Should have tokens for logged-in users
+SELECT COUNT(*) FROM token;  -- Multiple
+
+-- Should have OTP records
+SELECT * FROM otp ORDER BY created_at DESC LIMIT 5;
+```
 
 ---
 
 ## 🎯 Next Steps
 
-1. ✅ Test all authentication endpoints
-2. ✅ Create additional test users
-3. ✅ Test role-based access control
-4. ✅ Integrate with frontend application
-5. ✅ Add custom roles and permissions
-6. ✅ Configure SMS/Email for OTP (optional)
-7. ✅ Set up production database
-8. ✅ Deploy to staging/production
+After successful local testing:
+
+1. **Security Review:**
+   - Change default admin password
+   - Review security configurations
+   - Test authorization rules
+
+2. **Integration Testing:**
+   - Test with real SMS/WhatsApp service
+   - Configure Google OAuth for production
+   - Set up monitoring
+
+3. **Performance Testing:**
+   - Test with multiple concurrent users
+   - Check database query performance
+   - Monitor memory/CPU usage
+
+4. **Deploy:**
+   - Configure production environment
+   - Set up CI/CD pipeline
+   - Deploy to staging environment
 
 ---
 
-## 📞 Support
+**Happy Testing! 🚀**
 
-For issues, check:
-- Application logs: `logs/application.log`
-- MySQL error log
-- Flyway migration history: `/actuator/flyway`
-- Swagger UI error console
-
----
-
-**Created:** February 6, 2026  
-**Version:** 1.0.0  
-**Status:** ✅ Ready for Testing
+For issues or questions, check the main README.md or application logs.
