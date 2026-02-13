@@ -8,11 +8,13 @@ import java.util.List;
 @Service
 public class NotificationService {
 
-    public void sendWhatsAppTextMessage(String mobileNumber, String templateName, List<String> params, String mediaUrl,
-            boolean isButton, String buttonUrl) {
-        log.info("Sending WhatsApp message to {}: Template={}, Params={}", mobileNumber, templateName, params);
-        // Implementation for sending WhatsApp message
-    }
+    // public void sendWhatsAppTextMessage(String mobileNumber, String templateName,
+    // List<String> params, String mediaUrl,
+    // boolean isButton, String buttonUrl) {
+    // log.info("Sending WhatsApp message to {}: Template={}, Params={}",
+    // mobileNumber, templateName, params);
+    // // Implementation for sending WhatsApp message
+    // }
 
     public void sendSms(String mobileNumber, String message) {
         log.info("Sending SMS to {}: {}", mobileNumber, message);
